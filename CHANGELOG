@@ -1,3 +1,6 @@
+* 2017-06-04    Armand Tresova     <atresova@gmail.com>
+- Changes doctype to html and make some spacing fixes throughout
+
 * 2011-07-26    Greg Wojtak     <gwojtak@thelinuxfix.com>
 - Deprecated configuration options 'use_ad' and 'ad_domain'
 - Cleaned up binding process and role retrieval functions
