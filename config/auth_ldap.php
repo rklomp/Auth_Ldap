@@ -51,9 +51,11 @@ $config['basedn'] = 'dc=mycompany,dc=com';
 $config['login_attribute'] = 'uid';
 $config['proxy_user'] = '';
 $config['proxy_pass'] = '';
-$config['roles'] = array(1 => 'User', 
+$config['roles'] = array(
+    1 => 'User', 
     3 => 'Power User',
-    5 => 'Administrator');
+    5 => 'Administrator'
+);
 $config['member_attribute'] = 'memberUid';
 $config['auditlog'] = 'application/logs/audit.log';  // Some place to log attempted logins (separate from message log)
 ?>
