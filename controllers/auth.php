@@ -40,37 +40,33 @@ class Auth extends CI_Controller {
         $this->login();
     }
 
-    function login($errorMsg = NULL){
+    function login($errorMsg = NULL) {
         $this->session->keep_flashdata('tried_to');
-        if(!$this->auth_ldap->is_authenticated()) {
+        if (!$this->auth_ldap->is_authenticated()) {
             // Set up rules for form validation
-            $rules = $this->form_validation;
-            $rules->set_rules('username', 'Username', 'required|alpha_dash');
-            $rules->set_rules('password', 'Password', 'required');
+            $this->form_validation->set_rules('username', 'Username', 'required|alpha_dash');
+            $this->form_validation->set_rules('password', 'Password', 'required');
 
             // Do the login...
-            if($rules->run() && $this->auth_ldap->login(
-                    $rules->set_value('username'),
-                    $rules->set_value('password'))) {
+            if ($this->form_validation->run() && $this->auth_ldap->login($this->form_validation->set_value('username'), $this->form_validation->set_value('password'))) {
                 // Login WIN!
-                if($this->session->flashdata('tried_to')) {
+                if ($this->session->flashdata('tried_to')) {
                     redirect($this->session->flashdata('tried_to'));
-                }else {
+                } else {
                     redirect('/portal/');
                 }
-            }else {
+            } else {
                 // Login FAIL
-                $this->load->view('auth/login_form', array('login_fail_msg'
-                                        => 'Error with LDAP authentication.'));
+                $this->load->view('auth/login_form', array('login_fail_msg' => 'Error with LDAP authentication.'));
             }
-        }else {
-                // Already logged in...
-                redirect('/portal/');
+        } else {
+            // Already logged in...
+            redirect('/portal/');
         }
     }
 
     function logout() {
-        if($this->session->userdata('logged_in')) {
+        if ($this->session->userdata('logged_in')) {
             $data['name'] = $this->session->userdata('cn');
             $data['username'] = $this->session->userdata('username');
             $data['logged_in'] = TRUE;
@@ -78,7 +74,7 @@ class Auth extends CI_Controller {
         } else {
             $data['logged_in'] = FALSE;
         }
-            $this->load->view('auth/logout_view', $data);
+        $this->load->view('auth/logout_view', $data);
     }
 }
 
