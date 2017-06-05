@@ -15,7 +15,7 @@
 
     You should have received a copy of the GNU General Public License
     along with Auth_Ldap.  If not, see <http://www.gnu.org/licenses/>.
- * 
+ *
  */
 /**
  * Auth_Ldap Class
@@ -49,7 +49,7 @@ class Auth_Ldap {
         $this->_init();
     }
 
-    
+
     /**
      * @access private
      * @return void
@@ -74,13 +74,14 @@ class Auth_Ldap {
         $this->roles = $this->ci->config->item('roles');
         $this->auditlog = $this->ci->config->item('auditlog');
         $this->member_attribute = $this->ci->config->item('member_attribute');
+        $this->internal_domain = $this->ci->config->item('internal_domain');
     }
 
     /**
      * @access public
      * @param string $username
      * @param string $password
-     * @return bool 
+     * @return bool
      */
     function login($username, $password) {
         /*
@@ -103,7 +104,7 @@ class Auth_Ldap {
             'role' => $user_info['role'],
             'logged_in' => TRUE
         );
-    
+
         $this->ci->session->set_userdata($customdata);
         return TRUE;
     }
@@ -119,7 +120,7 @@ class Auth_Ldap {
             return FALSE;
         }
     }
-    
+
     /**
      * @access public
      */
@@ -147,11 +148,11 @@ class Auth_Ldap {
      * @access private
      * @param string $username
      * @param string $password
-     * @return array 
+     * @return array
      */
     private function _authenticate($username, $password) {
         $needed_attrs = array('dn', 'cn', $this->login_attribute);
-        
+
         foreach ($this->hosts as $host) {
             $this->ldapconn = ldap_connect($host);
             if ($this->ldapconn) {
@@ -167,49 +168,63 @@ class Auth_Ldap {
         }
 
         // We've connected, now we can attempt the login...
-        
+
         // These to ldap_set_options are needed for binding to AD properly
         // They should also work with any modern LDAP service.
         ldap_set_option($this->ldapconn, LDAP_OPT_REFERRALS, 0);
         ldap_set_option($this->ldapconn, LDAP_OPT_PROTOCOL_VERSION, 3);
-        
-        // Find the DN of the user we are binding as
-        // If proxy_user and proxy_pass are set, use those, else bind anonymously
-        if ($this->proxy_user) {
-            $bind = ldap_bind($this->ldapconn, $this->proxy_user, $this->proxy_pass);
+
+        if (!empty($this->internal_domain)) {
+            $binddn = $this->internal_domain . '\\' . $username;
+            $bind = ldap_bind($this->ldapconn, $binddn, $password);
+
+            if (!$bind) {
+                $this->_audit("Failed login attempt: ".$username." from ".$_SERVER['REMOTE_ADDR']);
+                return FALSE;
+            }
+
+            // @TODO: Need to make sure search works (Not tested)
+            $filter = '('.$this->login_attribute.'='.$username.')';
+            $search = ldap_search($this->ldapconn, $this->basedn, $filter, array('dn', $this->login_attribute, 'cn'));
+            $entries = ldap_get_entries($this->ldapconn, $search);
         } else {
-            $bind = ldap_bind($this->ldapconn);
+            // Find the DN of the user we are binding as
+            // If proxy_user and proxy_pass are set, use those, else bind anonymously
+            if ($this->proxy_user) {
+                $bind = ldap_bind($this->ldapconn, $this->proxy_user, $this->proxy_pass);
+            } else {
+                $bind = ldap_bind($this->ldapconn);
+            }
+
+            if (!$bind) {
+                log_message('error', 'Unable to perform anonymous/proxy bind');
+                show_error('Unable to bind for user id lookup');
+            }
+
+            log_message('debug', 'Successfully bound to directory.  Performing dn lookup for '.$username);
+
+            $filter = '('.$this->login_attribute.'='.$username.')';
+            $search = ldap_search($this->ldapconn, $this->basedn, $filter, array('dn', $this->login_attribute, 'cn'));
+            $entries = ldap_get_entries($this->ldapconn, $search);
+            $binddn = $entries[0]['dn'];
+
+            // Now actually try to bind as the user
+            $bind = ldap_bind($this->ldapconn, $binddn, $password);
+            if (!$bind) {
+                $this->_audit("Failed login attempt: ".$username." from ".$_SERVER['REMOTE_ADDR']);
+                return FALSE;
+            }
         }
 
-        if (!$bind) {
-            log_message('error', 'Unable to perform anonymous/proxy bind');
-            show_error('Unable to bind for user id lookup');
-        }
-
-        log_message('debug', 'Successfully bound to directory.  Performing dn lookup for '.$username);
-        $filter = '('.$this->login_attribute.'='.$username.')';
-        // @TODO: Some users dont have permissions to search, add exception handling here.
-        $search = ldap_search($this->ldapconn, $this->basedn, $filter, array('dn', $this->login_attribute, 'cn'));
-        $entries = ldap_get_entries($this->ldapconn, $search);
-        $binddn = $entries[0]['dn'];
-            
-        // Now actually try to bind as the user
-        $bind = ldap_bind($this->ldapconn, $binddn, $password);
-        if (!$bind) {
-            $this->_audit("Failed login attempt: ".$username." from ".$_SERVER['REMOTE_ADDR']);
-            return FALSE;
-        }
         $cn = $entries[0]['cn'][0];
         $dn = stripslashes($entries[0]['dn']);
-        $id = $entries[0][$this->login_attribute][0];
-        
-        $get_role_arg = $id;               
-        
+        $role_id = $entries[0][$this->login_attribute][0];
+
         return array(
-            'cn' => $cn, 
-            'dn' => $dn, 
-            'id' => $id,
-            'role' => $this->_get_role($get_role_arg)
+            'cn' => $cn,
+            'dn' => $dn,
+            'id' => $role_id,
+            'role' => $this->_get_role($role_id)
         );
     }
 
@@ -217,7 +232,7 @@ class Auth_Ldap {
      * @access private
      * @param string $str
      * @param bool $for_dn
-     * @return string 
+     * @return string
      */
     private function ldap_escape($str, $for_dn = false) {
         /**
@@ -228,8 +243,8 @@ class Auth_Ldap {
         // see:
         // RFC2254
         // http://msdn.microsoft.com/en-us/library/ms675768(VS.85).aspx
-        // http://www-03.ibm.com/systems/i/software/ldap/underdn.html  
-        
+        // http://www-03.ibm.com/systems/i/software/ldap/underdn.html
+
         if  ($for_dn)
             $metaChars = array(',','=', '+', '<','>',';', '\\', '"', '#');
         else
@@ -240,9 +255,9 @@ class Auth_Ldap {
             $quotedMetaChars[$key] = '\\'.str_pad(dechex(ord($value)), 2, '0');
         }
         $str = str_replace($metaChars, $quotedMetaChars, $str); //replace them
-        return $str;  
+        return $str;
     }
-    
+
     /**
      * @access private
      * @param string $username
@@ -251,10 +266,13 @@ class Auth_Ldap {
     private function _get_role($username) {
         $filter = '('.$this->member_attribute.'='.$username.')';
         $search = ldap_search($this->ldapconn, $this->basedn, $filter, array('cn'));
+
         if (!$search) {
             log_message('error', "Error searching for group:".ldap_error($this->ldapconn));
             show_error('Couldn\'t find groups: '.ldap_error($this->ldapconn));
+            return false;
         }
+
         $results = ldap_get_entries($this->ldapconn, $search);
         if ($results['count'] != 0) {
             for ($i = 0; $i < $results['count']; $i++) {

@@ -14,7 +14,7 @@
 
     You should have received a copy of the GNU General Public License
     along with Auth_Ldap.  If not, see <http://www.gnu.org/licenses/>.
- * 
+ *
  */
 
 /**
@@ -33,7 +33,7 @@
  * login_attribute  - LDAP attribute used to check usernames against
  * proxy_user       - Distinguised name of a proxy user if your LDAP server does not allow anonymous binds
  * proxy pass       - Password to use with above
- * roles            - An array of role names to use within your app.  The values are arbitrary.  
+ * roles            - An array of role names to use within your app.  The values are arbitrary.
  *                      The keys themselves represent the
  *			"security level," ie
  *			if( $security_level >= 3 ) {
@@ -44,7 +44,7 @@
  * auditlog         - Location to log auditable events.  Needs to be writeable
  *                      by the web server
  */
-		
+
 $config['hosts'] = array('ldap.mycompany.com');
 $config['ports'] = array(389);
 $config['basedn'] = 'dc=mycompany,dc=com';
@@ -52,10 +52,11 @@ $config['login_attribute'] = 'uid';
 $config['proxy_user'] = '';
 $config['proxy_pass'] = '';
 $config['roles'] = array(
-    1 => 'User', 
+    1 => 'User',
     3 => 'Power User',
     5 => 'Administrator'
 );
 $config['member_attribute'] = 'memberUid';
+$config['internal_domain'] = 'MYDOMAIN';
 $config['auditlog'] = 'application/logs/audit.log';  // Some place to log attempted logins (separate from message log)
 ?>
