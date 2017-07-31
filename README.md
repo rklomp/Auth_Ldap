@@ -2,3 +2,5 @@ I've created this library because I've several times need to authenticate users 
 I had a hard time finding an LDAP authentication module for CodeIgniter, so I ended up writing my own to fill this seemingly omnipresent need.
 
 Some code "borrowed" (ldap_escape(), to be precise) from php.net contributed in the user comments for ldap_search() by "douglass_davis [at] earthlink dot net."
+
+Original: https://github.com/gwojtak/Auth_Ldap
