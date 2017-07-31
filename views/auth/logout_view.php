@@ -4,7 +4,7 @@
       <title>Logout</title>
   </head>
   <body>
-    <?php if($logged_in): ?>
+    <?php if ($logged_in): ?>
       <p><?php echo $username; ?> has been logged out.</p>
       <p>Thanks for visiting <?php echo $name; ?></p>
     <?php else: ?>

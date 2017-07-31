@@ -9,10 +9,10 @@
 
       <?php echo form_open('auth/login', array('id' => 'loginform')); ?>
       <?php
-      
+
       $table = array(array('', ''),
           array(form_label('Username:', 'username'),
-                form_input(array('name' => 'username', 'id' => 'username', 'class' => 'formfield'))),
+                form_input(array('name' => 'username', 'value' => set_value('username'), 'id' => 'username', 'class' => 'formfield'))),
           array(form_label('Password', 'password'),
                 form_password(array('name' => 'password', 'id' => 'password', 'class' => 'formfield'))));
           echo $this->table->generate($table);

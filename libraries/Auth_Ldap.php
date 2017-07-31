@@ -49,16 +49,14 @@ class Auth_Ldap {
         $this->_init();
     }
 
-
     /**
      * @access private
      * @return void
      */
     private function _init() {
-        // Verify that the LDAP extension has been loaded/built-in
-        // No sense continuing if we can't
+        // Verify that the LDAP extension is present
         if (!function_exists('ldap_connect')) {
-            show_error('LDAP functionality not present.  Either load the module ldap php module or use a php with ldap support compiled in.');
+            show_error('LDAP functionality not present. Either load the module ldap php module or use a php with ldap support compiled in.');
             log_message('error', 'LDAP functionality not present in php.');
         }
 
@@ -91,11 +89,11 @@ class Auth_Ldap {
 
         $user_info = $this->_authenticate($username, $password);
         if (empty($user_info['role'])) {
-            log_message('info', $username." has no role to play.");
+            log_message('info', $username.' has no role to play.');
             show_error($username.' succssfully authenticated, but is not allowed because the username was not found in an allowed access group.');
         }
         // Record the login
-        $this->_audit("Successful login: ".$user_info['cn']."(".$username.") from ".$this->ci->input->ip_address());
+        $this->_audit('Successful login: '.$user_info['cn'].'('.$username.') from '.$this->ci->input->ip_address());
 
         // Set the session data
         $customdata = array(
@@ -137,7 +135,7 @@ class Auth_Ldap {
      */
     private function _audit($msg) {
         $date = date('Y/m/d H:i:s');
-        if (!file_put_contents($this->auditlog, $date.": ".$msg."\n", FILE_APPEND)) {
+        if (!file_put_contents($this->auditlog, $date.': '.$msg."\n", FILE_APPEND)) {
             log_message('info', 'Error opening audit log '.$this->auditlog);
             return FALSE;
         }
@@ -151,19 +149,19 @@ class Auth_Ldap {
      * @return array
      */
     private function _authenticate($username, $password) {
-        $needed_attrs = array('dn', 'cn', $this->login_attribute);
-
         foreach ($this->hosts as $host) {
             $this->ldapconn = ldap_connect($host);
+
             if ($this->ldapconn) {
                break;
-            }else {
+            } else {
                 log_message('info', 'Error connecting to '.$uri);
             }
         }
+
         // At this point, $this->ldapconn should be set.  If not... DOOM!
         if (!$this->ldapconn) {
-            log_message('error', "Couldn't connect to any LDAP servers.  Bailing...");
+            log_message('error', 'Couldn\'t connect to any LDAP servers.  Bailing...');
             show_error('Error connecting to your LDAP server(s).  Please check the connection and try again.');
         }
 
@@ -179,7 +177,7 @@ class Auth_Ldap {
             $bind = ldap_bind($this->ldapconn, $binddn, $password);
 
             if (!$bind) {
-                $this->_audit("Failed login attempt: ".$username." from ".$_SERVER['REMOTE_ADDR']);
+                $this->_audit('Failed login attempt: '.$username.' from '.$_SERVER['REMOTE_ADDR']);
                 return FALSE;
             }
 
@@ -218,13 +216,13 @@ class Auth_Ldap {
 
         $cn = $entries[0]['cn'][0];
         $dn = stripslashes($entries[0]['dn']);
-        $role_id = $entries[0][$this->login_attribute][0];
+        $role_user = $entries[0][strtolower($this->login_attribute)][0];
 
         return array(
             'cn' => $cn,
             'dn' => $dn,
-            'id' => $role_id,
-            'role' => $this->_get_role($role_id)
+            'id' => $role_user,
+            'role' => $this->_get_role($role_user)
         );
     }
 
@@ -245,16 +243,20 @@ class Auth_Ldap {
         // http://msdn.microsoft.com/en-us/library/ms675768(VS.85).aspx
         // http://www-03.ibm.com/systems/i/software/ldap/underdn.html
 
-        if  ($for_dn)
-            $metaChars = array(',','=', '+', '<','>',';', '\\', '"', '#');
-        else
+        if ($for_dn) {
+            $metaChars = array(',', '=', '+', '<', '>', ';', '\\', '"', '#');
+        } else {
             $metaChars = array('*', '(', ')', '\\', chr(0));
+        }
 
         $quotedMetaChars = array();
+
         foreach ($metaChars as $key => $value) {
             $quotedMetaChars[$key] = '\\'.str_pad(dechex(ord($value)), 2, '0');
         }
-        $str = str_replace($metaChars, $quotedMetaChars, $str); //replace them
+
+        $str = str_replace($metaChars, $quotedMetaChars, $str);
+
         return $str;
     }
 
@@ -264,13 +266,12 @@ class Auth_Ldap {
      * @return int
      */
     private function _get_role($username) {
-        $filter = '('.$this->member_attribute.'='.$username.')';
+        $filter = '(' . $this->member_attribute . '=' . $username . ')';
         $search = ldap_search($this->ldapconn, $this->basedn, $filter, array('cn'));
 
         if (!$search) {
-            log_message('error', "Error searching for group:".ldap_error($this->ldapconn));
-            show_error('Couldn\'t find groups: '.ldap_error($this->ldapconn));
-            return false;
+            log_message('error', 'Error searching for group:' . ldap_error($this->ldapconn));
+            show_error('Couldn\'t find groups: ' . ldap_error($this->ldapconn));
         }
 
         $results = ldap_get_entries($this->ldapconn, $search);

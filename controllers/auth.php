@@ -14,7 +14,7 @@
 
     You should have received a copy of the GNU General Public License
     along with Auth_Ldap.  If not, see <http://www.gnu.org/licenses/>.
- * 
+ *
  */
 
 /**
@@ -66,14 +66,13 @@ class Auth extends CI_Controller {
     }
 
     function logout() {
-        if ($this->session->userdata('logged_in')) {
+        if ($this->auth_ldap->is_authenticated()) {
             $data['name'] = $this->session->userdata('cn');
             $data['username'] = $this->session->userdata('username');
-            $data['logged_in'] = TRUE;
+
             $this->auth_ldap->logout();
-        } else {
-            $data['logged_in'] = FALSE;
         }
+
         $this->load->view('auth/logout_view', $data);
     }
 }
