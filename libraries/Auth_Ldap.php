@@ -88,6 +88,11 @@ class Auth_Ldap {
          */
 
         $user_info = $this->_authenticate($username, $password);
+
+        if (!$user_info) {
+            return false;
+        }
+            
         if (empty($user_info['role'])) {
             log_message('info', $username.' has no role to play.');
             show_error($username.' succssfully authenticated, but is not allowed because the username was not found in an allowed access group.');
@@ -204,10 +209,16 @@ class Auth_Ldap {
             $filter = '('.$this->login_attribute.'='.$username.')';
             $search = ldap_search($this->ldapconn, $this->basedn, $filter, array('dn', $this->login_attribute, 'cn'));
             $entries = ldap_get_entries($this->ldapconn, $search);
+
+            if($entries["count"]<1){
+                $this->_audit("Failed login attempt: ".$username." from ".$_SERVER['REMOTE_ADDR']);
+                return FALSE;
+        }
+        
             $binddn = $entries[0]['dn'];
 
             // Now actually try to bind as the user
-            $bind = ldap_bind($this->ldapconn, $binddn, $password);
+            $bind = @ldap_bind($this->ldapconn, $binddn, $password);
             if (!$bind) {
                 $this->_audit("Failed login attempt: ".$username." from ".$_SERVER['REMOTE_ADDR']);
                 return FALSE;
@@ -222,7 +233,7 @@ class Auth_Ldap {
             'cn' => $cn,
             'dn' => $dn,
             'id' => $role_user,
-            'role' => $this->_get_role($role_user)
+            'role' => $this->_get_role($dn)
         );
     }
 
